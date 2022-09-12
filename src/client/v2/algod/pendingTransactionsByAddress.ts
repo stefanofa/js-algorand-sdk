@@ -1,3 +1,4 @@
+import { RateLimiter } from 'limiter';
 import JSONRequest from '../jsonrequest';
 import HTTPClient from '../../client';
 import * as encoding from '../../../encoding/encoding';
@@ -6,8 +7,8 @@ import * as encoding from '../../../encoding/encoding';
  * returns all transactions for a PK [addr] in the [first, last] rounds range.
  */
 export default class PendingTransactionsByAddress extends JSONRequest {
-  constructor(c: HTTPClient, private address: string) {
-    super(c);
+  constructor(c: HTTPClient, private address: string, limiter?: RateLimiter) {
+    super(c, undefined, limiter);
     this.address = address;
     this.query.format = 'msgpack';
   }

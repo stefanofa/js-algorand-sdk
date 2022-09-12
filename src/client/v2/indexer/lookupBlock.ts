@@ -1,3 +1,4 @@
+import { RateLimiter } from 'limiter';
 import JSONRequest from '../jsonrequest';
 import HTTPClient from '../../client';
 import IntDecoding from '../../../types/intDecoding';
@@ -16,8 +17,13 @@ export default class LookupBlock extends JSONRequest {
    * @param round - The number of the round to look up.
    * @category GET
    */
-  constructor(c: HTTPClient, intDecoding: IntDecoding, private round: number) {
-    super(c, intDecoding);
+  constructor(
+    c: HTTPClient,
+    intDecoding: IntDecoding,
+    private round: number,
+    limiter: RateLimiter
+  ) {
+    super(c, intDecoding, limiter);
     this.round = round;
   }
 

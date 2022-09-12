@@ -1,3 +1,4 @@
+import { RateLimiter } from 'limiter';
 import JSONRequest from '../jsonrequest';
 import HTTPClient from '../../client';
 import * as encoding from '../../../encoding/encoding';
@@ -6,8 +7,8 @@ import * as encoding from '../../../encoding/encoding';
  * pendingTransactionsInformation returns transactions that are pending in the pool
  */
 export default class PendingTransactions extends JSONRequest {
-  constructor(c: HTTPClient) {
-    super(c);
+  constructor(c: HTTPClient, limiter?: RateLimiter) {
+    super(c, undefined, limiter);
     this.query.format = 'msgpack';
   }
 

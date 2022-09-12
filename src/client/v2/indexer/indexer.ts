@@ -1,3 +1,4 @@
+import { RateLimiter, RateLimiterOpts } from 'limiter';
 import ServiceClient from '../serviceClient';
 import MakeHealthCheck from './makeHealthCheck';
 import LookupAssetBalances from './lookupAssetBalances';
@@ -38,6 +39,8 @@ import {
  * [Run Indexer in Postman OAS3](https://developer.algorand.org/docs/rest-apis/restendpoints/#algod-indexer-and-kmd-rest-endpoints)
  */
 export default class IndexerClient extends ServiceClient {
+  limiter: RateLimiter | undefined;
+
   /**
    * Create an IndexerClient from
    * * either a token, baseServer, port, and optional headers
@@ -67,9 +70,11 @@ export default class IndexerClient extends ServiceClient {
       | BaseHTTPClient,
     baseServer = 'http://127.0.0.1',
     port: string | number = 8080,
-    headers: Record<string, string> = {}
+    headers: Record<string, string> = {},
+    rateLimiterOpts?: RateLimiterOpts
   ) {
     super('X-Indexer-API-Token', tokenOrBaseClient, baseServer, port, headers);
+    if (rateLimiterOpts) this.limiter = new RateLimiter(rateLimiterOpts);
   }
 
   /**
@@ -85,7 +90,7 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   makeHealthCheck() {
-    return new MakeHealthCheck(this.c, this.intDecoding);
+    return new MakeHealthCheck(this.c, this.intDecoding, this.limiter);
   }
 
   /**
@@ -102,7 +107,12 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   lookupAssetBalances(index: number) {
-    return new LookupAssetBalances(this.c, this.intDecoding, index);
+    return new LookupAssetBalances(
+      this.c,
+      this.intDecoding,
+      index,
+      this.limiter
+    );
   }
 
   /**
@@ -119,7 +129,12 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   lookupAssetTransactions(index: number) {
-    return new LookupAssetTransactions(this.c, this.intDecoding, index);
+    return new LookupAssetTransactions(
+      this.c,
+      this.intDecoding,
+      index,
+      this.limiter
+    );
   }
 
   /**
@@ -136,7 +151,12 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   lookupAccountTransactions(account: string) {
-    return new LookupAccountTransactions(this.c, this.intDecoding, account);
+    return new LookupAccountTransactions(
+      this.c,
+      this.intDecoding,
+      account,
+      this.limiter
+    );
   }
 
   /**
@@ -153,7 +173,7 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   lookupBlock(round: number) {
-    return new LookupBlock(this.c, this.intDecoding, round);
+    return new LookupBlock(this.c, this.intDecoding, round, this.limiter);
   }
 
   /**
@@ -170,7 +190,12 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   lookupTransactionByID(txID: string) {
-    return new LookupTransactionByID(this.c, this.intDecoding, txID);
+    return new LookupTransactionByID(
+      this.c,
+      this.intDecoding,
+      txID,
+      this.limiter
+    );
   }
 
   /**
@@ -187,7 +212,12 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   lookupAccountByID(account: string) {
-    return new LookupAccountByID(this.c, this.intDecoding, account);
+    return new LookupAccountByID(
+      this.c,
+      this.intDecoding,
+      account,
+      this.limiter
+    );
   }
 
   /**
@@ -204,7 +234,12 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   lookupAccountAssets(account: string) {
-    return new LookupAccountAssets(this.c, this.intDecoding, account);
+    return new LookupAccountAssets(
+      this.c,
+      this.intDecoding,
+      account,
+      this.limiter
+    );
   }
 
   /**
@@ -221,7 +256,12 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   lookupAccountCreatedAssets(account: string) {
-    return new LookupAccountCreatedAssets(this.c, this.intDecoding, account);
+    return new LookupAccountCreatedAssets(
+      this.c,
+      this.intDecoding,
+      account,
+      this.limiter
+    );
   }
 
   /**
@@ -238,7 +278,12 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   lookupAccountAppLocalStates(account: string) {
-    return new LookupAccountAppLocalStates(this.c, this.intDecoding, account);
+    return new LookupAccountAppLocalStates(
+      this.c,
+      this.intDecoding,
+      account,
+      this.limiter
+    );
   }
 
   /**
@@ -258,7 +303,8 @@ export default class IndexerClient extends ServiceClient {
     return new LookupAccountCreatedApplications(
       this.c,
       this.intDecoding,
-      account
+      account,
+      this.limiter
     );
   }
 
@@ -276,7 +322,7 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   lookupAssetByID(index: number) {
-    return new LookupAssetByID(this.c, this.intDecoding, index);
+    return new LookupAssetByID(this.c, this.intDecoding, index, this.limiter);
   }
 
   /**
@@ -293,7 +339,12 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   lookupApplications(index: number) {
-    return new LookupApplications(this.c, this.intDecoding, index);
+    return new LookupApplications(
+      this.c,
+      this.intDecoding,
+      index,
+      this.limiter
+    );
   }
 
   /**
@@ -310,7 +361,12 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   lookupApplicationLogs(appID: number) {
-    return new LookupApplicationLogs(this.c, this.intDecoding, appID);
+    return new LookupApplicationLogs(
+      this.c,
+      this.intDecoding,
+      appID,
+      this.limiter
+    );
   }
 
   /**
@@ -325,7 +381,7 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   searchAccounts() {
-    return new SearchAccounts(this.c, this.intDecoding);
+    return new SearchAccounts(this.c, this.intDecoding, this.limiter);
   }
 
   /**
@@ -340,7 +396,7 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   searchForTransactions() {
-    return new SearchForTransactions(this.c, this.intDecoding);
+    return new SearchForTransactions(this.c, this.intDecoding, this.limiter);
   }
 
   /**
@@ -355,7 +411,7 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   searchForAssets() {
-    return new SearchForAssets(this.c, this.intDecoding);
+    return new SearchForAssets(this.c, this.intDecoding, this.limiter);
   }
 
   /**
@@ -370,6 +426,6 @@ export default class IndexerClient extends ServiceClient {
    * @category GET
    */
   searchForApplications() {
-    return new SearchForApplications(this.c, this.intDecoding);
+    return new SearchForApplications(this.c, this.intDecoding, this.limiter);
   }
 }

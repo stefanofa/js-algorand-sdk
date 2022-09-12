@@ -1,3 +1,4 @@
+import { RateLimiter, RateLimiterOpts } from 'limiter';
 import ServiceClient from '../serviceClient';
 import * as modelsv2 from './models/types';
 import AccountInformation from './accountInformation';
@@ -39,6 +40,8 @@ import StateProof from './stateproof';
  * [Run Algod in Postman OAS3](https://developer.algorand.org/docs/rest-apis/restendpoints/?from_query=algod#algod-indexer-and-kmd-rest-endpoints)
  */
 export default class AlgodClient extends ServiceClient {
+  limiter?: RateLimiter;
+
   /**
    * Create an AlgodClient from
    * * either a token, baseServer, port, and optional headers
@@ -68,9 +71,11 @@ export default class AlgodClient extends ServiceClient {
       | BaseHTTPClient,
     baseServer = 'http://r2.algorand.network',
     port: string | number = 4180,
-    headers: Record<string, string> = {}
+    headers: Record<string, string> = {},
+    rateLimiterOpts?: RateLimiterOpts
   ) {
     super('X-Algo-API-Token', tokenOrBaseClient, baseServer, port, headers);
+    if (rateLimiterOpts) this.limiter = new RateLimiter(rateLimiterOpts);
   }
 
   /**
@@ -85,7 +90,7 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   healthCheck() {
-    return new HealthCheck(this.c);
+    return new HealthCheck(this.c, undefined, this.limiter);
   }
 
   /**
@@ -100,7 +105,7 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   versionsCheck() {
-    return new Versions(this.c);
+    return new Versions(this.c, undefined, this.limiter);
   }
 
   /**
@@ -120,7 +125,7 @@ export default class AlgodClient extends ServiceClient {
    * @category POST
    */
   sendRawTransaction(stxOrStxs: Uint8Array | Uint8Array[]) {
-    return new SendRawTransaction(this.c, stxOrStxs);
+    return new SendRawTransaction(this.c, stxOrStxs, this.limiter);
   }
 
   /**
@@ -137,7 +142,12 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   accountInformation(account: string) {
-    return new AccountInformation(this.c, this.intDecoding, account);
+    return new AccountInformation(
+      this.c,
+      this.intDecoding,
+      account,
+      this.limiter
+    );
   }
 
   /**
@@ -160,7 +170,8 @@ export default class AlgodClient extends ServiceClient {
       this.c,
       this.intDecoding,
       account,
-      index
+      index,
+      this.limiter
     );
   }
 
@@ -184,7 +195,8 @@ export default class AlgodClient extends ServiceClient {
       this.c,
       this.intDecoding,
       account,
-      index
+      index,
+      this.limiter
     );
   }
 
@@ -202,7 +214,7 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   block(roundNumber: number) {
-    return new Block(this.c, roundNumber);
+    return new Block(this.c, roundNumber, this.limiter);
   }
 
   /**
@@ -229,7 +241,7 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   pendingTransactionInformation(txid: string) {
-    return new PendingTransactionInformation(this.c, txid);
+    return new PendingTransactionInformation(this.c, txid, this.limiter);
   }
 
   /**
@@ -254,7 +266,7 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   pendingTransactionsInformation() {
-    return new PendingTransactions(this.c);
+    return new PendingTransactions(this.c, this.limiter);
   }
 
   /**
@@ -282,7 +294,7 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   pendingTransactionByAddress(address: string) {
-    return new PendingTransactionsByAddress(this.c, address);
+    return new PendingTransactionsByAddress(this.c, address, this.limiter);
   }
 
   /**
@@ -297,7 +309,7 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   status() {
-    return new Status(this.c, this.intDecoding);
+    return new Status(this.c, this.intDecoding, this.limiter);
   }
 
   /**
@@ -314,7 +326,7 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   statusAfterBlock(round: number) {
-    return new StatusAfterBlock(this.c, this.intDecoding, round);
+    return new StatusAfterBlock(this.c, this.intDecoding, round, this.limiter);
   }
 
   /**
@@ -340,7 +352,7 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   getTransactionParams() {
-    return new SuggestedParams(this.c);
+    return new SuggestedParams(this.c, undefined, this.limiter);
   }
 
   /**
@@ -355,7 +367,7 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   supply() {
-    return new Supply(this.c, this.intDecoding);
+    return new Supply(this.c, this.intDecoding, this.limiter);
   }
 
   /**
@@ -374,7 +386,7 @@ export default class AlgodClient extends ServiceClient {
    * @category POST
    */
   compile(source: string | Uint8Array) {
-    return new Compile(this.c, source);
+    return new Compile(this.c, source, this.limiter);
   }
 
   /**
@@ -392,7 +404,7 @@ export default class AlgodClient extends ServiceClient {
    * @category POST
    */
   dryrun(dr: modelsv2.DryrunRequest) {
-    return new Dryrun(this.c, dr);
+    return new Dryrun(this.c, dr, this.limiter);
   }
 
   /**
@@ -410,7 +422,7 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   getAssetByID(index: number) {
-    return new GetAssetByID(this.c, this.intDecoding, index);
+    return new GetAssetByID(this.c, this.intDecoding, index, this.limiter);
   }
 
   /**
@@ -428,7 +440,12 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   getApplicationByID(index: number) {
-    return new GetApplicationByID(this.c, this.intDecoding, index);
+    return new GetApplicationByID(
+      this.c,
+      this.intDecoding,
+      index,
+      this.limiter
+    );
   }
 
   /**
@@ -443,7 +460,7 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   genesis() {
-    return new Genesis(this.c, this.intDecoding);
+    return new Genesis(this.c, this.intDecoding, this.limiter);
   }
 
   /**
@@ -462,7 +479,13 @@ export default class AlgodClient extends ServiceClient {
    * @category GET
    */
   getTransactionProof(round: number, txID: string) {
-    return new GetTransactionProof(this.c, this.intDecoding, round, txID);
+    return new GetTransactionProof(
+      this.c,
+      this.intDecoding,
+      round,
+      txID,
+      this.limiter
+    );
   }
 
   /**
@@ -478,7 +501,12 @@ export default class AlgodClient extends ServiceClient {
    * @param round
    */
   getLightBlockHeaderProof(round: number) {
-    return new LightBlockHeaderProof(this.c, this.intDecoding, round);
+    return new LightBlockHeaderProof(
+      this.c,
+      this.intDecoding,
+      round,
+      this.limiter
+    );
   }
 
   /**
@@ -494,6 +522,6 @@ export default class AlgodClient extends ServiceClient {
    * @param round
    */
   getStateProof(round: number) {
-    return new StateProof(this.c, this.intDecoding, round);
+    return new StateProof(this.c, this.intDecoding, round, this.limiter);
   }
 }

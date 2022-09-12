@@ -1,3 +1,4 @@
+import { RateLimiter } from 'limiter';
 import JSONRequest from '../jsonrequest';
 import HTTPClient from '../../client';
 
@@ -18,8 +19,12 @@ export function setHeaders(headers = {}) {
  * Executes compile
  */
 export default class Compile extends JSONRequest {
-  constructor(c: HTTPClient, private source: string | Uint8Array) {
-    super(c);
+  constructor(
+    c: HTTPClient,
+    private source: string | Uint8Array,
+    limiter?: RateLimiter
+  ) {
+    super(c, undefined, limiter);
     this.source = source;
   }
 
@@ -37,14 +42,27 @@ export default class Compile extends JSONRequest {
    * Executes compile
    * @param headers - A headers object
    */
-  async do(headers = {}) {
-    const txHeaders = setHeaders(headers);
-    const res = await this.c.post(
-      this.path(),
-      Buffer.from(this.source),
-      txHeaders,
-      this.query
-    );
-    return res.body;
+  async do(
+    headers = {},
+    retryIfFailed: boolean = true,
+    retryCount: number = 0
+  ) {
+    try {
+      if (this.limiter) await this.limiter.removeTokens(1);
+
+      const txHeaders = setHeaders(headers);
+      const res = await this.c.post(
+        this.path(),
+        Buffer.from(this.source),
+        txHeaders,
+        this.query
+      );
+      return res.body;
+    } catch (e) {
+      if (!retryIfFailed) throw e;
+      const canRetry = await this.waitBeforeRetry(retryCount);
+      if (!canRetry) throw e;
+      return this.do(headers, retryIfFailed, retryCount + 1);
+    }
   }
 }

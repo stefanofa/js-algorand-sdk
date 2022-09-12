@@ -1,3 +1,4 @@
+import { RateLimiter } from 'limiter';
 import JSONRequest from '../jsonrequest';
 import HTTPClient from '../../client';
 import IntDecoding from '../../../types/intDecoding';
@@ -30,9 +31,10 @@ export default class LookupAccountTransactions extends JSONRequest {
   constructor(
     c: HTTPClient,
     intDecoding: IntDecoding,
-    private account: string
+    private account: string,
+    limiter: RateLimiter
   ) {
-    super(c, intDecoding);
+    super(c, intDecoding, limiter);
     this.account = account;
   }
 

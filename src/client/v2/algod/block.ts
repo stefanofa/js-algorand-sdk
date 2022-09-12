@@ -1,3 +1,4 @@
+import { RateLimiter } from 'limiter';
 import * as encoding from '../../../encoding/encoding';
 import JSONRequest from '../jsonrequest';
 import HTTPClient from '../../client';
@@ -8,8 +9,8 @@ import HTTPClient from '../../client';
 export default class Block extends JSONRequest {
   private round: number;
 
-  constructor(c: HTTPClient, roundNumber: number) {
-    super(c);
+  constructor(c: HTTPClient, roundNumber: number, limiter?: RateLimiter) {
+    super(c, undefined, limiter);
     if (!Number.isInteger(roundNumber))
       throw Error('roundNumber should be an integer');
     this.round = roundNumber;

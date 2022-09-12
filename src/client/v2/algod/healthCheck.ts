@@ -9,11 +9,24 @@ export default class HealthCheck extends JSONRequest {
     return '/health';
   }
 
-  async do(headers = {}) {
-    const res = await this.c.get(this.path(), {}, headers);
-    if (!res.ok) {
-      throw new Error(`Health response: ${res.status}`);
+  async do(
+    headers = {},
+    retryIfFailed: boolean = true,
+    retryCount: number = 0
+  ) {
+    try {
+      if (this.limiter) await this.limiter.removeTokens(1);
+
+      const res = await this.c.get(this.path(), {}, headers);
+      if (!res.ok) {
+        throw new Error(`Health response: ${res.status}`);
+      }
+      return {};
+    } catch (e) {
+      if (!retryIfFailed) throw e;
+      const canRetry = await this.waitBeforeRetry(retryCount);
+      if (!canRetry) throw e;
+      return this.do(headers, retryIfFailed, retryCount + 1);
     }
-    return {};
   }
 }

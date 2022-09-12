@@ -1,3 +1,4 @@
+import { RateLimiter } from 'limiter';
 import JSONRequest from '../jsonrequest';
 import HTTPClient from '../../client';
 import * as encoding from '../../../encoding/encoding';
@@ -6,8 +7,8 @@ import * as encoding from '../../../encoding/encoding';
  * returns the transaction information for a specific txid of a pending transaction
  */
 export default class PendingTransactionInformation extends JSONRequest {
-  constructor(c: HTTPClient, private txid: string) {
-    super(c);
+  constructor(c: HTTPClient, private txid: string, limiter?: RateLimiter) {
+    super(c, undefined, limiter);
     this.txid = txid;
     this.query.format = 'msgpack';
   }

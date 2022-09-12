@@ -1,5 +1,15 @@
+import { RateLimiter, RateLimiterOpts } from 'limiter';
 import HTTPClient from '../client';
 import IntDecoding from '../../types/intDecoding';
+
+/**
+ * Sleep for given number of milliseconds
+ */
+async function sleep(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
 
 /**
  * Base abstract class for JSON requests.
@@ -15,6 +25,7 @@ export default abstract class JSONRequest<
   c: HTTPClient;
   query: Record<string, any>;
   intDecoding: IntDecoding;
+  limiter: RateLimiter | undefined;
 
   /**
    * @param client - HTTPClient object.
@@ -22,10 +33,15 @@ export default abstract class JSONRequest<
    *   for decoding integers from this request's response. See the setIntDecoding method for more
    *   details.
    */
-  constructor(client: HTTPClient, intDecoding?: IntDecoding) {
+  constructor(
+    client: HTTPClient,
+    intDecoding?: IntDecoding,
+    limiter?: RateLimiter
+  ) {
     this.c = client;
     this.query = {};
     this.intDecoding = intDecoding || IntDecoding.DEFAULT;
+    this.limiter = limiter;
   }
 
   /**
@@ -48,18 +64,49 @@ export default abstract class JSONRequest<
   }
 
   /**
+   * @param retryCount - The number of times the request has been retried
+   * @returns true if can retry another time, false otherwise
+   */
+  // eslint-disable-next-line class-methods-use-this
+  async waitBeforeRetry(retryCount: number) {
+    const MAX_RETRIES = 3;
+    if (retryCount >= MAX_RETRIES) return false;
+    // exponential backoff
+    await sleep(2 ** retryCount * 1000);
+    return true;
+  }
+
+  /**
    * Execute the request.
    * @param headers - Additional headers to send in the request. Optional.
    * @returns A promise which resolves to the response data.
    * @category JSONRequest
    */
-  async do(headers: Record<string, any> = {}): Promise<Data> {
-    const jsonOptions: Record<string, any> = {};
-    if (this.intDecoding !== 'default') {
-      jsonOptions.intDecoding = this.intDecoding;
+  async do(
+    headers: Record<string, any> = {},
+    retryIfFailed: boolean = true,
+    retryCount: number = 0
+  ): Promise<Data> {
+    try {
+      if (this.limiter) await this.limiter.removeTokens(1);
+
+      const jsonOptions: Record<string, any> = {};
+      if (this.intDecoding !== 'default') {
+        jsonOptions.intDecoding = this.intDecoding;
+      }
+      const res = await this.c.get(
+        this.path(),
+        this.query,
+        headers,
+        jsonOptions
+      );
+      return this.prepare(res.body);
+    } catch (e) {
+      if (!retryIfFailed) throw e;
+      const canRetry = await this.waitBeforeRetry(retryCount);
+      if (!canRetry) throw e;
+      return this.do(headers, retryIfFailed, retryCount + 1);
     }
-    const res = await this.c.get(this.path(), this.query, headers, jsonOptions);
-    return this.prepare(res.body);
   }
 
   /**

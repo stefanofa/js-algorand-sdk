@@ -1,3 +1,4 @@
+import { RateLimiter } from 'limiter';
 import JSONRequest from '../jsonrequest';
 import HTTPClient from '../../client';
 import IntDecoding from '../../../types/intDecoding';
@@ -16,8 +17,13 @@ export default class LookupApplicationLogs extends JSONRequest {
    * @param appID - The ID of the application which generated the logs.
    * @category GET
    */
-  constructor(c: HTTPClient, intDecoding: IntDecoding, private appID: number) {
-    super(c, intDecoding);
+  constructor(
+    c: HTTPClient,
+    intDecoding: IntDecoding,
+    private appID: number,
+    limiter: RateLimiter
+  ) {
+    super(c, intDecoding, limiter);
     this.appID = appID;
   }
 

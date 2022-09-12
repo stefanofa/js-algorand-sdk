@@ -1,3 +1,4 @@
+import { RateLimiter } from 'limiter';
 import JSONRequest from '../jsonrequest';
 import HTTPClient from '../../client';
 import { concatArrays } from '../../../utils/utils';
@@ -26,8 +27,12 @@ function isByteArray(array: any): array is Uint8Array {
 export default class SendRawTransaction extends JSONRequest {
   private txnBytesToPost: Uint8Array;
 
-  constructor(c: HTTPClient, stxOrStxs: Uint8Array | Uint8Array[]) {
-    super(c);
+  constructor(
+    c: HTTPClient,
+    stxOrStxs: Uint8Array | Uint8Array[],
+    limiter?: RateLimiter
+  ) {
+    super(c, undefined, limiter);
 
     let forPosting = stxOrStxs;
     if (Array.isArray(stxOrStxs)) {
@@ -47,13 +52,26 @@ export default class SendRawTransaction extends JSONRequest {
     return '/v2/transactions';
   }
 
-  async do(headers = {}) {
-    const txHeaders = setSendTransactionHeaders(headers);
-    const res = await this.c.post(
-      this.path(),
-      Buffer.from(this.txnBytesToPost),
-      txHeaders
-    );
-    return res.body;
+  async do(
+    headers = {},
+    retryIfFailed: boolean = true,
+    retryCount: number = 0
+  ) {
+    try {
+      if (this.limiter) await this.limiter.removeTokens(1);
+
+      const txHeaders = setSendTransactionHeaders(headers);
+      const res = await this.c.post(
+        this.path(),
+        Buffer.from(this.txnBytesToPost),
+        txHeaders
+      );
+      return res.body;
+    } catch (e) {
+      if (!retryIfFailed) throw e;
+      const canRetry = await this.waitBeforeRetry(retryCount);
+      if (!canRetry) throw e;
+      return this.do(headers, retryIfFailed, retryCount + 1);
+    }
   }
 }
